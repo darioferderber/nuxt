@@ -48,7 +48,8 @@ export interface AsyncDataOptions<
   pick?: PickKeys
   watch?: MultiWatchSources
   immediate?: boolean
-  deep?: boolean
+  deep?: boolean,
+  ttl?: number | undefined
 }
 
 export interface AsyncDataExecuteOptions {
@@ -150,8 +151,17 @@ export function useAsyncData<
   options.lazy = options.lazy ?? false
   options.immediate = options.immediate ?? true
   options.deep = options.deep ?? asyncDataDefaults.deep
+  options.ttl = options.ttl ?? undefined
 
-  const hasCachedData = () => ![null, undefined].includes(options.getCachedData!(key) as any)
+  const hasCachedData = () => {
+    const hasData = ![null, undefined].includes(options.getCachedData!(key) as any)
+    if(hasData && options.ttl) {
+      const _expiration = new Date(nuxt.payload._fetchedAt?.[key] as number)
+      _expiration.setTime(_expiration.getTime() + options.ttl)
+      if(_expiration.getTime() < Date.now()) return false
+    }
+    return hasData
+  }
 
   // Create or use a shared asyncData entity
   if (!nuxt._asyncData[key] || !options.immediate) {
@@ -165,6 +175,10 @@ export function useAsyncData<
       error: toRef(nuxt.payload._errors, key),
       status: ref('idle')
     }
+  }
+
+  if(options.ttl && !nuxt.payload._fetchedAt?.[key]) {
+    nuxt.payload._fetchedAt = {...(nuxt.payload._fetchedAt || {}), [key]: Date.now()}
   }
 
   // TODO: Else, somehow check for conflicting keys with different defaults or fetcher
@@ -206,6 +220,7 @@ export function useAsyncData<
         }
 
         nuxt.payload.data[key] = result
+        if(options.ttl) nuxt.payload._fetchedAt[key] = Date.now()
 
         asyncData.data.value = result
         asyncData.error.value = null
@@ -384,6 +399,9 @@ export function clearNuxtData (keys?: string | string[] | ((key: string) => bool
   for (const key of _keys) {
     if (key in nuxtApp.payload.data) {
       nuxtApp.payload.data[key] = undefined
+    }
+    if (nuxtApp.payload._fetchedAt && key in nuxtApp.payload._fetchedAt) {
+      nuxtApp.payload._fetchedAt[key] = undefined
     }
     if (key in nuxtApp.payload._errors) {
       nuxtApp.payload._errors[key] = null

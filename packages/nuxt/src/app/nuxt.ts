@@ -82,6 +82,7 @@ export interface NuxtPayload {
     data?: any
   } | null
   _errors: Record<string, NuxtError | null>
+  _fetchedAt: Record<string, number | undefined>
   [key: string]: unknown
 }
 
