@@ -156,9 +156,8 @@ export function useAsyncData<
   const hasCachedData = () => {
     const hasData = ![null, undefined].includes(options.getCachedData!(key) as any)
     if(hasData && options.ttl) {
-      const _expiration = new Date(nuxt.payload._fetchedAt?.[key] as number)
-      _expiration.setTime(_expiration.getTime() + options.ttl)
-      if(_expiration.getTime() < Date.now()) return false
+      const _expiration = nuxt.payload._fetchedAt?.[key] as number + options.ttl
+      if(_expiration < Date.now()) return false
     }
     return hasData
   }
@@ -400,7 +399,7 @@ export function clearNuxtData (keys?: string | string[] | ((key: string) => bool
     if (key in nuxtApp.payload.data) {
       nuxtApp.payload.data[key] = undefined
     }
-    if (nuxtApp.payload._fetchedAt && key in nuxtApp.payload._fetchedAt) {
+    if (nuxtApp.payload._fetchedAt && (key in nuxtApp.payload._fetchedAt)) {
       nuxtApp.payload._fetchedAt[key] = undefined
     }
     if (key in nuxtApp.payload._errors) {
